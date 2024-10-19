@@ -37,8 +37,25 @@ class OverlayService : Service() {
     }
 
     private fun setupOverlayButton() {
-        overlayButton = Button(this)
-        overlayButton.text = "Dock+"
+        val overlayContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            alpha = 0.5f
+        }
+
+        val overlayIcon = ImageView(this)
+
+        try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            val icon = packageManager.getApplicationIcon(appInfo)
+            overlayIcon.setImageDrawable(icon)
+        } catch (e: PackageManager.NameNotFoundException) {
+            e.printStackTrace()
+        }
+
+        val iconSize = 100
+        overlayIcon.layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+
+        overlayContainer.addView(overlayIcon)
 
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -52,9 +69,12 @@ class OverlayService : Service() {
         params.x = 0
         params.y = 100
 
-        setupDraggableButton()
-        windowManager.addView(overlayButton, params)
+        setupDraggableButton(overlayContainer)
+
+        windowManager.addView(overlayContainer, params)
     }
+
+
 
     private fun setupExpandedView() {
         expandedView = LayoutInflater.from(this).inflate(R.layout.expanded_overlay, null)
@@ -70,13 +90,13 @@ class OverlayService : Service() {
         val appContainer = expandedView.findViewById<LinearLayout>(R.id.appContainer)
         loadSelectedApps(appContainer)
 
-        expandedView.findViewById<Button>(R.id.closeButton).setOnClickListener {
+        expandedView.findViewById<ImageView>(R.id.closeButton).setOnClickListener {
             collapseOverlay()
         }
     }
 
-    private fun setupDraggableButton() {
-        overlayButton.setOnTouchListener(object : View.OnTouchListener {
+    private fun setupDraggableButton(overlayIcon: LinearLayout) {
+        overlayIcon.setOnTouchListener(object : View.OnTouchListener {
             private var initialX: Int = 0
             private var initialY: Int = 0
             private var initialTouchX: Float = 0f
@@ -94,7 +114,7 @@ class OverlayService : Service() {
                     MotionEvent.ACTION_MOVE -> {
                         params.x = initialX + (event.rawX - initialTouchX).toInt()
                         params.y = initialY + (event.rawY - initialTouchY).toInt()
-                        windowManager.updateViewLayout(overlayButton, params)
+                        windowManager.updateViewLayout(overlayIcon, params)
                         return true
                     }
                     MotionEvent.ACTION_UP -> {
@@ -108,6 +128,7 @@ class OverlayService : Service() {
             }
         })
     }
+
 
     private fun toggleOverlay() {
         if (isExpanded) {
