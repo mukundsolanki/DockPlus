@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
             val success = saveSelectedApps(this, selectedApps.toList())
             if (success) {
                 Toast.makeText(this, "Selected apps saved successfully", Toast.LENGTH_SHORT).show()
+                stopOverlayService()
                 checkOverlayPermission()
             } else {
                 Toast.makeText(this, "Failed to save selected apps", Toast.LENGTH_SHORT).show()
@@ -53,6 +54,10 @@ class MainActivity : ComponentActivity() {
         } else if (selectedApps.isEmpty()) {
             Toast.makeText(this, "Please select at least one app", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun stopOverlayService() {
+        stopService(Intent(this, OverlayService::class.java))
     }
 
     private fun checkOverlayPermission() {
@@ -87,12 +92,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DockPlusScreen(onSaveClick: (Set<AppInfo>) -> Unit) {
     val context = LocalContext.current
     val installedApps = remember { getInstalledApps(context) }
 
-    // Retrieve saved selected apps from SharedPreferences
     val savedAppsPackageNames = remember { getSavedSelectedApps(context) }
     var selectedApps by remember {
         mutableStateOf(
@@ -100,66 +106,123 @@ fun DockPlusScreen(onSaveClick: (Set<AppInfo>) -> Unit) {
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = "Selected ${selectedApps.size}/5 apps",
-            modifier = Modifier.padding(16.dp)
-        )
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            items(installedApps) { app ->
-                AppItem(
-                    app = app,
-                    isSelected = selectedApps.contains(app),
-                    onSelectionChanged = { isSelected ->
-                        if (isSelected && selectedApps.size < 5) {
-                            selectedApps = selectedApps + app
-                        } else if (!isSelected) {
-                            selectedApps = selectedApps - app
-                        } else {
-                            Toast.makeText(context, "You can select a maximum of 5 apps", Toast.LENGTH_SHORT).show()
-                        }
+    var showLimitReached by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Dock+",
+                            modifier = Modifier.align(Alignment.Center),
+                            style = MaterialTheme.typography.titleLarge
+
+                        )
                     }
+                }
+            )
+        },
+        content = { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Selected ${selectedApps.size}/5 apps",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(bottom = 16.dp)
+                ) {
+                    items(installedApps) { app ->
+                        AppCardItem(
+                            app = app,
+                            isSelected = selectedApps.contains(app),
+                            onSelectionChanged = { isSelected ->
+                                if (isSelected && selectedApps.size < 5) {
+                                    selectedApps = selectedApps + app
+                                } else if (!isSelected) {
+                                    selectedApps = selectedApps - app
+                                } else {
+                                    showLimitReached = true
+                                }
+                            }
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = { onSaveClick(selectedApps) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    enabled = selectedApps.isNotEmpty()
+                ) {
+                    Text("Save")
+                }
+            }
+
+            if (showLimitReached) {
+                Snackbar(
+                    modifier = Modifier.padding(8.dp),
+                    action = {
+                        TextButton(onClick = { showLimitReached = false }) {
+                            Text("OK")
+                        }
+                    },
+                    content = { Text("You can select a maximum of 5 apps") }
                 )
             }
         }
-        Button(
-            onClick = { onSaveClick(selectedApps) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text("Save")
-        }
-    }
+    )
 }
 
-
 @Composable
-fun AppItem(
+fun AppCardItem(
     app: AppInfo,
     isSelected: Boolean,
     onSelectionChanged: (Boolean) -> Unit
 ) {
-    Row(
+    Card(
+        elevation = CardDefaults.cardElevation(0.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Checkbox(
-            checked = isSelected,
-            onCheckedChange = { onSelectionChanged(it) }
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Image(
-            bitmap = app.icon.toBitmap().asImageBitmap(),
-            contentDescription = "App icon",
-            modifier = Modifier.size(48.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(text = app.name)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = { onSelectionChanged(it) }
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Image(
+                bitmap = app.icon.toBitmap().asImageBitmap(),
+                contentDescription = "App icon",
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = app.name,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
     }
 }
+
+
 
 data class AppInfo(
     val name: String,
