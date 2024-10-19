@@ -2,7 +2,9 @@ package com.example.dockplus
 
 import android.content.Intent
 import android.content.pm.ResolveInfo
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,15 +31,64 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    DockPlusScreen()
+                    DockPlusScreen(
+                        onSaveClick = { selectedApps ->
+                            handleSaveClick(selectedApps)
+                        }
+                    )
                 }
             }
         }
     }
+
+    private fun handleSaveClick(selectedApps: Set<AppInfo>) {
+        if (selectedApps.isNotEmpty() && selectedApps.size <= 5) {
+            val success = saveSelectedApps(this, selectedApps.toList())
+            if (success) {
+                Toast.makeText(this, "Selected apps saved successfully", Toast.LENGTH_SHORT).show()
+                checkOverlayPermission()
+            } else {
+                Toast.makeText(this, "Failed to save selected apps", Toast.LENGTH_SHORT).show()
+            }
+        } else if (selectedApps.isEmpty()) {
+            Toast.makeText(this, "Please select at least one app", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun checkOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+        } else {
+            startOverlayService()
+        }
+    }
+
+    private fun startOverlayService() {
+        startService(Intent(this, OverlayService::class.java))
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
+            if (Settings.canDrawOverlays(this)) {
+                startOverlayService()
+            } else {
+                Toast.makeText(this, "Overlay permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    companion object {
+        private const val OVERLAY_PERMISSION_REQUEST_CODE = 1
+    }
 }
 
 @Composable
-fun DockPlusScreen() {
+fun DockPlusScreen(onSaveClick: (Set<AppInfo>) -> Unit) {
     val context = LocalContext.current
     val installedApps = remember { getInstalledApps(context) }
     var selectedApps by remember { mutableStateOf(setOf<AppInfo>()) }
@@ -65,18 +116,7 @@ fun DockPlusScreen() {
             }
         }
         Button(
-            onClick = {
-                if (selectedApps.isNotEmpty() && selectedApps.size <= 5) {
-                    val success = saveSelectedApps(context, selectedApps.toList())
-                    if (success) {
-                        Toast.makeText(context, "Selected apps saved successfully", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "Failed to save selected apps", Toast.LENGTH_SHORT).show()
-                    }
-                } else if (selectedApps.isEmpty()) {
-                    Toast.makeText(context, "Please select at least one app", Toast.LENGTH_SHORT).show()
-                }
-            },
+            onClick = { onSaveClick(selectedApps) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
