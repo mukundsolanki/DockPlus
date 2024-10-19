@@ -3,7 +3,30 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <queries android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <queries android:name="android.permission.QUERY_ALL_PACKAGES">
+        <package android:name="com.android.vending" /> <!-- Google Play Store -->
+        <package android:name="com.google.android.apps.maps" /> <!-- Google Maps -->
+        <package android:name="com.android.chrome" /> <!-- Google Chrome -->
+        <package android:name="com.google.android.apps.docs" /> <!-- Google Drive -->
+        <package android:name="com.google.android.apps.photos" /> <!-- Google Photos -->
+        <package android:name="com.google.android.youtube" /> <!-- YouTube -->
+        <package android:name="com.google.android.apps.docs.editors.docs" /> <!-- Google Docs -->
+        <package android:name="com.google.android.apps.docs.editors.sheets" /> <!-- Google Sheets -->
+        <package android:name="com.google.android.apps.docs.editors.slides" /> <!-- Google Slides -->
+        <package android:name="com.google.android.keep" /> <!-- Google Keep -->
+        <package android:name="com.google.android.calendar" /> <!-- Google Calendar -->
+        <package android:name="com.google.android.gm" /> <!-- Gmail -->
+        <package android:name="com.google.android.apps.googleassistant" /> <!-- Google Assistant -->
+        <package android:name="com.google.android.contacts" />
+        <package android:name="com.google.android.deskclock" />
+        <package android:name="com.google.android.apps.wellbeing" />
+        <package android:name="com.google.android.apps.nbu.files" />
+        <package android:name="com.google.android.googlequicksearchbox" />
+        <!-- Add more as needed -->
+
+    </queries>
+
+
 
     <application
         android:allowBackup="true"

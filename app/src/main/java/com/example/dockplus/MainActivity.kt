@@ -1,6 +1,8 @@
 package com.example.dockplus
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
 import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Bundle
@@ -15,12 +17,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.google.gson.Gson
+import androidx.compose.ui.Modifier
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,12 +94,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DockPlusScreen(onSaveClick: (Set<AppInfo>) -> Unit) {
     val context = LocalContext.current
-    val installedApps = remember { getInstalledApps(context) }
+    val installedApps = remember { installedAppsAndSystemApps(context) }
 
     val savedAppsPackageNames = remember { getSavedSelectedApps(context) }
     var selectedApps by remember {
@@ -117,7 +118,6 @@ fun DockPlusScreen(onSaveClick: (Set<AppInfo>) -> Unit) {
                             text = "Dock+",
                             modifier = Modifier.align(Alignment.Center),
                             style = MaterialTheme.typography.titleLarge
-
                         )
                     }
                 }
@@ -222,26 +222,31 @@ fun AppCardItem(
     }
 }
 
-
-
 data class AppInfo(
     val name: String,
     val packageName: String,
     val icon: android.graphics.drawable.Drawable
 )
 
-fun getInstalledApps(context: android.content.Context): List<AppInfo> {
+fun installedAppsAndSystemApps(context: android.content.Context): List<AppInfo> {
     val packageManager = context.packageManager
-    val intent = Intent(Intent.ACTION_MAIN, null)
-    intent.addCategory(Intent.CATEGORY_LAUNCHER)
+    val packList = packageManager.getInstalledPackages(0)
+    val installedApps = mutableListOf<AppInfo>()
 
-    return packageManager.queryIntentActivities(intent, 0).map { resolveInfo: ResolveInfo ->
-        AppInfo(
-            resolveInfo.loadLabel(packageManager).toString(),
-            resolveInfo.activityInfo.packageName,
-            resolveInfo.loadIcon(packageManager)
-        )
-    }.sortedBy { it.name }
+    for (packInfo in packList) {
+        // Check if the app can be launched
+        if (packageManager.getLaunchIntentForPackage(packInfo.packageName) != null) {
+            installedApps.add(
+                AppInfo(
+                    packInfo.applicationInfo.loadLabel(packageManager).toString(),
+                    packInfo.packageName,
+                    packInfo.applicationInfo.loadIcon(packageManager)
+                )
+            )
+        }
+    }
+
+    return installedApps.sortedBy { it.name } // Sort the apps by name
 }
 
 fun saveSelectedApps(context: android.content.Context, selectedApps: List<AppInfo>): Boolean {
