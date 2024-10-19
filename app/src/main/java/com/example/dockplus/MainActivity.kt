@@ -91,7 +91,14 @@ class MainActivity : ComponentActivity() {
 fun DockPlusScreen(onSaveClick: (Set<AppInfo>) -> Unit) {
     val context = LocalContext.current
     val installedApps = remember { getInstalledApps(context) }
-    var selectedApps by remember { mutableStateOf(setOf<AppInfo>()) }
+
+    // Retrieve saved selected apps from SharedPreferences
+    val savedAppsPackageNames = remember { getSavedSelectedApps(context) }
+    var selectedApps by remember {
+        mutableStateOf(
+            installedApps.filter { it.packageName in savedAppsPackageNames }.toSet()
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -125,6 +132,7 @@ fun DockPlusScreen(onSaveClick: (Set<AppInfo>) -> Unit) {
         }
     }
 }
+
 
 @Composable
 fun AppItem(
@@ -184,4 +192,11 @@ fun saveSelectedApps(context: android.content.Context, selectedApps: List<AppInf
         e.printStackTrace()
         false
     }
+}
+
+fun getSavedSelectedApps(context: android.content.Context): Set<String> {
+    val sharedPreferences = context.getSharedPreferences("DockPlusPrefs", ComponentActivity.MODE_PRIVATE)
+    val json = sharedPreferences.getString("selected_apps", "[]")
+    val gson = Gson()
+    return gson.fromJson(json, Array<String>::class.java)?.toSet() ?: emptySet()
 }
